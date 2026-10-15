@@ -1,0 +1,51 @@
+@fungi.computer/cloudflare-computer
+Copyright (c) 2026 Cloudflare, Inc. (upstream)
+Copyright (c) 2026 Fungi Computer (fork changes)
+
+This package is a fork of Cloudflare Computer, `@cloudflare/computer` 0.2.1.
+
+- Upstream: https://github.com/cloudflare/computer, tag
+  `@cloudflare/computer@0.2.1`, commit
+  849759bbfc23eafbe989b6b158e31ef60a4afb68.
+- Imported: `packages/computer` (package root), plus the bundled workspace
+  sources `packages/dofs/src` and `packages/rpc/src` under `vendor/`.
+  Upstream tests, benchmarks, test harnesses and `dist/` are omitted.
+- License: MIT. Upstream's repository-root LICENSE is kept unchanged in
+  `LICENSE` and covers the upstream code and the fork changes.
+
+Fork changes to the upstream build:
+
+- `package.json`: renamed to `@fungi.computer/cloudflare-computer`; exact
+  dependency pins taken from upstream's 0.2.1 lockfile; build scripts no longer
+  build the omitted sibling workspaces.
+- `rolldown.config.ts` and `tsconfig.json`: resolve `@cloudflare/dofs` and
+  `@cloudflare/computer-rpc` from `vendor/`; the type set drops
+  `vitest/globals`.
+- `src/backends/worker-shell/script/build-bundle.mjs`: bundle just-bash 3.2.0
+  (the release the published 0.2.1 shell groups contain) through the
+  `just-bash-shell-bundle` alias.
+- `package.json` `build` cleans `dist/` first.
+- The worker-shell core group is imported, typed and kept external as
+  `@fungi.computer/cloudflare-computer/shell/core`, the package's own name
+  (`shell-modules.ts`, `tsconfig.json`, `rolldown.config.ts`).
+- capnweb is `@fungi.computer/capnweb` (the capnweb 0.12.0 fork with corrected
+  tuple declarations) in `package.json`, `rolldown.config.ts`, `src/stub.ts`,
+  `src/backends/container/cloudflare-container.ts` and `vendor/rpc/src`, so the
+  package shares one capnweb runtime with its consumers.
+
+With only those build changes, `pnpm run build` reproduces the published
+0.2.1 `dist/` apart from content-hash chunk names, source-path comments, and
+the patch releases of bundled third-party code that the workspace lockfile
+resolves (for example sql.js 1.14.2 for 1.14.1, papaparse 5.7.0 for 5.5.4,
+fast-xml-parser 5.11.1 for 5.10.1, smol-toml 1.8.0 for 1.7.1,
+which-typed-array 1.1.24 for 1.1.22).
+
+Fork changes to behavior:
+
+- Worker-shell state: `ShellWorker` reports the shell's final `cwd` and
+  environment as a `state` event before `exit`; the runtime wire, the event
+  codecs and `WorkspaceRuntimeResult.state` carry it, and the type surface
+  exports `WorkspaceShellState`. The worker-shell parser rejects a malformed
+  `state` frame. The vendored rpc `ExecEvent` and the worker-javascript record
+  codec carry the new member so the types stay exhaustive; the
+  worker-javascript backend itself never emits it.

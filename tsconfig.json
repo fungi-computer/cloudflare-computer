@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "ESNext.Disposable", "WebWorker"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "types": ["@cloudflare/workers-types", "node"],
+    "paths": {
+      "@cloudflare/dofs": ["./vendor/dofs/src/index.ts"],
+      "@cloudflare/dofs/testing": ["./vendor/dofs/src/testing.ts"],
+      "@cloudflare/computer-rpc": ["./vendor/rpc/src/index.ts"],
+      "@cloudflare/computer-rpc/client": ["./vendor/rpc/src/client.ts"],
+      "@cloudflare/computer-rpc/server": ["./vendor/rpc/src/server.ts"],
+      "@cloudflare/computer-rpc/driver": ["./vendor/rpc/src/sync-driver.ts"],
+      "@cloudflare/computer-rpc/debug": ["./vendor/rpc/src/debug.ts"],
+      "@fungi.computer/cloudflare-computer/shell/core": ["./src/backends/worker-shell/generated/core.ts"],
+      "@fungi.computer/cloudflare-computer/shell/curl": ["./src/backends/worker-shell/generated/curl.ts"],
+      "@fungi.computer/cloudflare-computer/shell/html-to-markdown": [
+        "./src/backends/worker-shell/generated/html-to-markdown.ts"
+      ],
+      "@fungi.computer/cloudflare-computer/shell/python": ["./src/backends/worker-shell/generated/python.ts"],
+      "@fungi.computer/cloudflare-computer/shell/sqlite": ["./src/backends/worker-shell/generated/sqlite.ts"],
+      "@fungi.computer/cloudflare-computer/shell/js-exec": ["./src/backends/worker-shell/generated/js-exec.ts"],
+      "@fungi.computer/cloudflare-computer/shell/yq": ["./src/backends/worker-shell/generated/yq.ts"],
+      "@fungi.computer/cloudflare-computer/shell/file": ["./src/backends/worker-shell/generated/file.ts"],
+      "@fungi.computer/cloudflare-computer/shell/xan": ["./src/backends/worker-shell/generated/xan.ts"],
+      "@fungi.computer/cloudflare-computer/shell/jq": ["./src/backends/worker-shell/generated/jq.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "*.ts"]
+}
