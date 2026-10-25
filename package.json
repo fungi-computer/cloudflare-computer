@@ -1,6 +1,6 @@
 {
   "name": "@fungi.computer/cloudflare-computer",
-  "version": "0.2.1-fungi.1",
+  "version": "0.2.1-fungi.2",
   "author": "Levi <levi@technomancy.dev>",
   "description": "Fork of Cloudflare Computer 0.2.1 (@cloudflare/computer) with persisted worker-shell state",
   "license": "MIT",

@@ -18,6 +18,7 @@
 export type {
   ApplyResult,
   DurableObjectStorageLike,
+  FileEncoding,
   SkippedEntry,
   SQLiteWorkspaceProviderOptions,
 } from "@cloudflare/dofs";

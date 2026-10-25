@@ -1,5 +1,11 @@
 # @cloudflare/computer
 
+## 0.2.1-fungi.2
+
+### Patch Changes
+
+- Fix Worker type declarations so they no longer introduce Node.js binary globals.
+
 ## 0.2.1
 
 ### Patch Changes

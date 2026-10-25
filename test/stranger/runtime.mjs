@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { parse } from "acorn";
+import { readdir, readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import core from "@fungi.computer/cloudflare-computer/shell/core";
 import jq from "@fungi.computer/cloudflare-computer/shell/jq";
 import yq from "@fungi.computer/cloudflare-computer/shell/yq";
@@ -19,3 +22,14 @@ for (const group of [core, jq, yq, xan, file]) {
     );
   }
 }
+
+// Check the installed tarball, including shared declaration chunks that are
+// reachable through Workspace.provider(). Node binary globals must never be
+// required by this public filesystem surface.
+const dist = dirname(fileURLToPath(import.meta.resolve("@fungi.computer/cloudflare-computer")));
+for (const entry of await readdir(dist, { recursive: true })) {
+  if (!entry.endsWith(".d.ts")) continue;
+  const declaration = await readFile(resolve(dist, entry), "utf8");
+  assert.doesNotMatch(declaration, /\b(?:Buffer|BufferEncoding)\b/, entry);
+}
+console.log("PASS packed declarations require no Node binary globals");

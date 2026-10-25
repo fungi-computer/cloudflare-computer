@@ -31,7 +31,7 @@ export type { RmOptions } from "./fs/rm.js";
 export { lstat, stat, type WorkspaceStatResult } from "./fs/stat.js";
 export { symlink } from "./fs/symlink.js";
 export type { WriteFileContent, WriteFileOptions } from "./fs/writeFile.js";
-export type { SQLiteWorkspaceProviderOptions } from "./provider.js";
+export type { FileEncoding, SQLiteWorkspaceProviderOptions } from "./provider.js";
 export { SQLiteWorkspaceProvider } from "./provider.js";
 export { initializeSchema, ROOT_INODE, SCHEMA_VERSION } from "./schema/index.js";
 export { Database } from "./storage.js";

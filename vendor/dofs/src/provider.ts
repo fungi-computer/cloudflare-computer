@@ -46,6 +46,22 @@ import { canonicalizePath } from "./path.js";
 import { incrementRev } from "./rev.js";
 import type { Database } from "./storage.js";
 
+// Encodings accepted by the provider's Buffer-backed text reads. Keep the
+// public contract independent of Node's ambient BufferEncoding declaration.
+export type FileEncoding =
+  | "ascii"
+  | "utf8"
+  | "utf-8"
+  | "utf16le"
+  | "utf-16le"
+  | "ucs2"
+  | "ucs-2"
+  | "base64"
+  | "base64url"
+  | "latin1"
+  | "binary"
+  | "hex";
+
 export interface SQLiteWorkspaceProviderOptions {
   // Wall-clock source. Defaults to Date.now so production callers
   // don't need to thread one through; tests pin it.
@@ -347,15 +363,15 @@ export class SQLiteWorkspaceProvider {
 
   readFile(
     path: string,
-    options?: BufferEncoding | { encoding?: BufferEncoding | null } | null,
-  ): Promise<Buffer | string> {
+    options?: FileEncoding | { encoding?: FileEncoding | null } | null,
+  ): Promise<Uint8Array | string> {
     return Promise.resolve(this.readFileSync(path, options));
   }
 
   readFileSync(
     path: string,
-    options?: BufferEncoding | { encoding?: BufferEncoding | null } | null,
-  ): Buffer | string {
+    options?: FileEncoding | { encoding?: FileEncoding | null } | null,
+  ): Uint8Array | string {
     const encoding = typeof options === "string" ? options : options?.encoding;
     const pending = findPendingWriteBuffer(this.db, path);
     if (pending !== undefined) {
@@ -399,8 +415,8 @@ export class SQLiteWorkspaceProvider {
 
   writeFile(
     path: string,
-    data: string | Buffer,
-    options?: { encoding?: BufferEncoding; mode?: number } | BufferEncoding,
+    data: string | Uint8Array,
+    options?: { encoding?: FileEncoding; mode?: number } | FileEncoding,
   ): Promise<void> {
     this.writeFileSync(path, data, options);
     return Promise.resolve();
@@ -408,8 +424,8 @@ export class SQLiteWorkspaceProvider {
 
   writeFileSync(
     path: string,
-    data: string | Buffer,
-    options?: { encoding?: BufferEncoding; mode?: number } | BufferEncoding,
+    data: string | Uint8Array,
+    options?: { encoding?: FileEncoding; mode?: number } | FileEncoding,
   ): void {
     const mode = typeof options === "string" ? undefined : options?.mode;
     const bytes =
@@ -421,9 +437,9 @@ export class SQLiteWorkspaceProvider {
 
   writeFileRangesSync(
     path: string,
-    data: string | Buffer,
+    data: string | Uint8Array,
     ranges: WriteFileRange[],
-    options?: { encoding?: BufferEncoding; mode?: number } | BufferEncoding,
+    options?: { encoding?: FileEncoding; mode?: number } | FileEncoding,
   ): void {
     const mode = typeof options === "string" ? undefined : options?.mode;
     const bytes =
@@ -439,9 +455,9 @@ export class SQLiteWorkspaceProvider {
 
   writeRangeSync(
     path: string,
-    data: string | Buffer | Uint8Array,
+    data: string | Uint8Array,
     offset: number,
-    options?: { encoding?: BufferEncoding; mode?: number } | BufferEncoding,
+    options?: { encoding?: FileEncoding; mode?: number } | FileEncoding,
   ): number {
     const mode = typeof options === "string" ? undefined : options?.mode;
     const bytes =
@@ -490,16 +506,16 @@ export class SQLiteWorkspaceProvider {
 
   appendFile(
     _path: string,
-    _data: string | Buffer,
-    _options?: { encoding?: BufferEncoding; mode?: number } | BufferEncoding,
+    _data: string | Uint8Array,
+    _options?: { encoding?: FileEncoding; mode?: number } | FileEncoding,
   ): Promise<void> {
     return Promise.reject(notImplemented("appendFile"));
   }
 
   appendFileSync(
     _path: string,
-    _data: string | Buffer,
-    _options?: { encoding?: BufferEncoding; mode?: number } | BufferEncoding,
+    _data: string | Uint8Array,
+    _options?: { encoding?: FileEncoding; mode?: number } | FileEncoding,
   ): void {
     throw notImplemented("appendFileSync");
   }
@@ -532,11 +548,11 @@ export class SQLiteWorkspaceProvider {
     throw notImplemented("internalModuleStat");
   }
 
-  realpath(path: string, _options?: { encoding?: BufferEncoding }): Promise<string> {
+  realpath(path: string, _options?: { encoding?: FileEncoding }): Promise<string> {
     return Promise.resolve(this.realpathSync(path));
   }
 
-  realpathSync(path: string, _options?: { encoding?: BufferEncoding }): string {
+  realpathSync(path: string, _options?: { encoding?: FileEncoding }): string {
     const { path: canonical } = canonicalizePath(path);
     if (resolveInode(this.db, canonical) === null) {
       throw createWorkspaceError("ENOENT", `no such path: ${canonical}`, canonical);
@@ -565,7 +581,7 @@ export class SQLiteWorkspaceProvider {
 
   readSync(
     fd: number,
-    buffer: Buffer | Uint8Array,
+    buffer: Uint8Array,
     offset: number,
     length: number,
     position: number | null,
@@ -587,14 +603,14 @@ export class SQLiteWorkspaceProvider {
     return slice.byteLength;
   }
 
-  readRangeSync(path: string, offset: number, length: number): Buffer {
+  readRangeSync(path: string, offset: number, length: number): Uint8Array {
     const slice = readRangeSyncImpl(this.db, path, offset, length);
     return Buffer.from(slice.buffer, slice.byteOffset, slice.byteLength);
   }
 
   writeSync(
     fd: number,
-    buffer: Buffer | Uint8Array,
+    buffer: Uint8Array,
     offset: number = 0,
     length: number = buffer.byteLength - offset,
     position: number | null = null,
@@ -658,11 +674,11 @@ export class SQLiteWorkspaceProvider {
 
   // -- Symlinks ------------------------------------------------------
 
-  readlink(path: string, _options?: { encoding?: BufferEncoding }): Promise<string> {
+  readlink(path: string, _options?: { encoding?: FileEncoding }): Promise<string> {
     return Promise.resolve(this.readlinkSync(path));
   }
 
-  readlinkSync(path: string, _options?: { encoding?: BufferEncoding }): string {
+  readlinkSync(path: string, _options?: { encoding?: FileEncoding }): string {
     return readlinkImpl(this.db, path);
   }
 
