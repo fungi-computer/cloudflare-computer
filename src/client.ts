@@ -361,7 +361,10 @@ function makeClient(
 // What `getWorkspace` accepts: a local host carrying the symbol stash
 // (the durable object `this`), or a remote stub exposing
 // `__getWorkspaceStub`.
-export type WorkspaceHandle = { [WORKSPACE]?: unknown } | WorkspaceStubHost;
+export type WorkspaceHandle =
+  | { [WORKSPACE]?: unknown }
+  | WorkspaceStubHost
+  | { __getWorkspaceStub(): Promise<Rpc.Stub<import("./stub.js").WorkspaceStub>> };
 
 export async function getWorkspace(handle: WorkspaceHandle): Promise<WorkspaceClient> {
   const local = (handle as { [WORKSPACE]?: unknown })[WORKSPACE];
