@@ -134,11 +134,21 @@ export interface WorkspaceRuntimeDisposeOptions {
   backend?: string;
 }
 
+export interface WorkspaceRuntimeResultOptions {
+  /**
+   * Observe the existing result drain's raw events, independent of result encoding.
+   * Awaiting the observer backpressures that drain. A rejected observer detaches;
+   * command completion and post-command synchronization remain owned by result().
+   * Only the first result() call installs an observer.
+   */
+  onEvent?: (event: WorkspaceRuntimeEvent) => void | Promise<void>;
+}
+
 export interface WorkspaceRuntimeExecHandle<E extends ExecEncoding = undefined>
   extends ReadableStream<WorkspaceRuntimeEvent<E>> {
   readonly id: string;
   readonly backend: string;
-  result(): Promise<WorkspaceRuntimeResult<E>>;
+  result(options?: WorkspaceRuntimeResultOptions): Promise<WorkspaceRuntimeResult<E>>;
   kill(signal?: KillSignal): Promise<void>;
   [Symbol.dispose](): void;
 }

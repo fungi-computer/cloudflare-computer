@@ -75,6 +75,7 @@ import type {
   WorkspaceRuntimeGetOptions,
   WorkspaceRuntimeKillOptions,
   WorkspaceRuntimeResult,
+  WorkspaceRuntimeResultOptions,
 } from "./runtime/types.js";
 import { encodeRuntimeEvent } from "./runtime/wire.js";
 import type { Workspace } from "./workspace.js";
@@ -326,9 +327,18 @@ export class WorkspaceRuntimeExecHandleStub<
     return this.#handle.backend;
   }
 
-  async result(): Promise<WorkspaceRuntimeResult<E>> {
+  async result(observer?: {
+    onEvent: NonNullable<WorkspaceRuntimeResultOptions["onEvent"]>;
+    [Symbol.dispose]?: () => void;
+  }): Promise<WorkspaceRuntimeResult<E>> {
     this.#claim();
-    return this.#handle.result();
+    try {
+      return await this.#handle.result(
+        observer === undefined ? undefined : { onEvent: (event) => observer.onEvent(event) },
+      );
+    } finally {
+      observer?.[Symbol.dispose]?.();
+    }
   }
 
   stream(): ReadableStream<Uint8Array> {

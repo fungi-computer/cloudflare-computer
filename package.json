@@ -100,6 +100,7 @@
     "clean": "node --input-type=module --eval \"import { rm } from 'node:fs/promises'; await rm('dist', { recursive: true, force: true });\"",
     "build:shell-bundle": "node ./src/backends/worker-shell/script/build-bundle.mjs",
     "build": "pnpm run clean && pnpm run build:shell-bundle && rolldown -c",
+    "test": "node --test test/packed-file-names.test.mjs",
     "typecheck": "pnpm run build:shell-bundle && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -152,8 +153,7 @@
       "typecheck": "required",
       "build": "required",
       "test": {
-        "status": "not-applicable",
-        "reason": "Upstream tests are omitted; packages/computer test:unit and runtime-proof exercise the fork"
+        "status": "required"
       },
       "docs": {
         "status": "not-applicable",

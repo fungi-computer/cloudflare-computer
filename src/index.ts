@@ -75,6 +75,7 @@ export type {
   WorkspaceRuntimeKillOptions,
   WorkspaceRuntimeLoader,
   WorkspaceRuntimeResult,
+  WorkspaceRuntimeResultOptions,
   WorkspaceRuntimeStatus,
   WorkspaceRuntimeValue,
   WorkspaceTrustedModule,

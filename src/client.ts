@@ -31,11 +31,13 @@
 // over RPC.
 
 import type { WorkspaceFilesystem } from "@cloudflare/dofs";
+import { RpcTarget } from "@fungi.computer/capnweb";
 
 import type {
   WorkspaceRuntimeEvent,
   WorkspaceRuntimeExecHandle,
   WorkspaceRuntimeResult,
+  WorkspaceRuntimeResultOptions,
   WorkspaceRuntimeValue,
 } from "./runtime/types.js";
 import { decodeRuntimeEvents } from "./runtime/wire.js";
@@ -53,10 +55,24 @@ import {
 interface RemoteExecHandle {
   readonly id: string | PromiseLike<string>;
   readonly backend: string | PromiseLike<string>;
-  result(): Promise<WorkspaceRuntimeResult<ExecEncoding>>;
+  result(observer?: RuntimeResultObserver): Promise<WorkspaceRuntimeResult<ExecEncoding>>;
   stream(): Promise<ReadableStream<Uint8Array>> | ReadableStream<Uint8Array>;
   kill(signal?: "SIGTERM" | "SIGKILL" | "SIGINT" | "SIGHUP"): Promise<void>;
   [Symbol.dispose]?(): void;
+}
+
+/** A callback capability on the existing result RPC, not another event stream. */
+class RuntimeResultObserver extends RpcTarget {
+  readonly #observe: NonNullable<WorkspaceRuntimeResultOptions["onEvent"]>;
+
+  constructor(observe: NonNullable<WorkspaceRuntimeResultOptions["onEvent"]>) {
+    super();
+    this.#observe = observe;
+  }
+
+  onEvent(event: WorkspaceRuntimeEvent): void | Promise<void> {
+    return this.#observe(event);
+  }
 }
 
 // Rebuild a host-shaped ExecHandle from a remote handle stub. The
@@ -151,14 +167,16 @@ async function rebuildExecHandle<E extends ExecEncoding>(
     id: { value: id, enumerable: false },
     backend: { value: backend, enumerable: false },
     result: {
-      value: () => {
+      value: (options?: WorkspaceRuntimeResultOptions) => {
         if (claimed === "stream") {
           throw new Error(
             "exec handle already streaming: call result() or iterate the stream, not both",
           );
         }
         claimed = "result";
-        resultPromise ??= remote.result() as Promise<WorkspaceRuntimeResult<E>>;
+        resultPromise ??= remote.result(
+          options?.onEvent === undefined ? undefined : new RuntimeResultObserver(options.onEvent),
+        ) as Promise<WorkspaceRuntimeResult<E>>;
         return resultPromise;
       },
       enumerable: false,

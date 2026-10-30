@@ -11,6 +11,7 @@ import type {
   WorkspaceRuntimeGetOptions,
   WorkspaceRuntimeKillOptions,
   WorkspaceRuntimeResult,
+  WorkspaceRuntimeResultOptions,
 } from "./types.js";
 
 interface WorkspaceRuntimeRouterOptions {
@@ -189,7 +190,7 @@ function wrapModuleHandle<E extends ExecEncoding>(
     id: { value: id, enumerable: false },
     backend: { value: backend, enumerable: false },
     result: {
-      value: (): Promise<WorkspaceRuntimeResult<E>> => {
+      value: (options?: WorkspaceRuntimeResultOptions): Promise<WorkspaceRuntimeResult<E>> => {
         if (claimed === "stream") {
           throw new Error("runtime handle already streaming: result() and streaming are exclusive");
         }
@@ -201,11 +202,11 @@ function wrapModuleHandle<E extends ExecEncoding>(
             resultReader = active;
           };
           if (resultMayUseSource && !sourceCancelled) {
-            return drainModuleResult<E>(source, encoding, setReader, sync);
+            return drainModuleResult<E>(source, encoding, setReader, sync, options);
           }
           if (!sourceCancelled) await source.cancel("result() requested a full replay");
           const replay = await runtime.getExec({ id, runtimeId });
-          return drainModuleResult<E>(replay.events, encoding, setReader, replay.sync);
+          return drainModuleResult<E>(replay.events, encoding, setReader, replay.sync, options);
         })();
         return resultPromise;
       },
@@ -307,7 +308,9 @@ async function drainModuleResult<E extends ExecEncoding>(
   encoding: E | undefined,
   setReader: (reader: ReadableStreamDefaultReader<WorkspaceRuntimeEvent> | undefined) => void,
   sync?: ModuleExecutionEnvelope["sync"],
+  options?: WorkspaceRuntimeResultOptions,
 ): Promise<WorkspaceRuntimeResult<E>> {
+  let onEvent = options?.onEvent;
   const stdout: Uint8Array[] = [];
   const stderr: Uint8Array[] = [];
   let value: WorkspaceRuntimeResult<E>["value"];
@@ -328,6 +331,15 @@ async function drainModuleResult<E extends ExecEncoding>(
       if (event.name === "exit") {
         exitCode = event.code;
         if ("result" in event) value = event.result;
+      }
+      if (onEvent !== undefined) {
+        try {
+          await onEvent(event);
+        } catch {
+          // Observation is ephemeral. Losing its consumer must not abandon the
+          // execution drain, its result, or the post-command filesystem pull.
+          onEvent = undefined;
+        }
       }
     }
   } finally {
