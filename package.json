@@ -100,7 +100,7 @@
     "clean": "node --input-type=module --eval \"import { rm } from 'node:fs/promises'; await rm('dist', { recursive: true, force: true });\"",
     "build:shell-bundle": "node ./src/backends/worker-shell/script/build-bundle.mjs",
     "build": "pnpm run clean && pnpm run build:shell-bundle && rolldown -c",
-    "test": "node --test test/packed-file-names.test.mjs",
+    "test": "node --test test/packed-file-names.test.mjs test/runtime-cancel.test.mjs",
     "typecheck": "pnpm run build:shell-bundle && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

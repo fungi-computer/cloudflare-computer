@@ -158,28 +158,32 @@ function wrapModuleHandle<E extends ExecEncoding>(
           return;
         }
         claimed = "stream";
-        reader ??= transformModuleEvents(source, encoding).getReader();
+        // Each step keeps its own reader: cancel() may clear the shared slot
+        // while this read is pending, and the read may settle while cancel()
+        // awaits. Releasing an already released reader does nothing.
+        const active = (reader ??= transformModuleEvents(source, encoding).getReader());
         try {
-          const next = await reader.read();
+          const next = await active.read();
           if (next.done) {
-            reader.releaseLock();
-            reader = undefined;
+            if (reader === active) reader = undefined;
+            active.releaseLock();
             controller.close();
           } else controller.enqueue(next.value);
         } catch (error) {
-          reader?.releaseLock();
-          reader = undefined;
+          if (reader === active) reader = undefined;
+          active.releaseLock();
           controller.error(error);
         }
       },
       async cancel(reason) {
         sourceCancelled = true;
-        if (reader) {
+        const active = reader;
+        if (active) {
+          reader = undefined;
           try {
-            await reader.cancel(reason);
+            await active.cancel(reason);
           } finally {
-            reader.releaseLock();
-            reader = undefined;
+            active.releaseLock();
           }
         } else await source.cancel(reason);
       },

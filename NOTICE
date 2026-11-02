@@ -49,3 +49,7 @@ Fork changes to behavior:
   `state` frame. The vendored rpc `ExecEvent` and the worker-javascript record
   codec carry the new member so the types stay exhaustive; the
   worker-javascript backend itself never emits it.
+- Runtime handle cancellation: `wrapModuleHandle` (`src/runtime/runtime.ts`)
+  keeps each read's and each cancel's reader in a local, so cancelling a
+  handle while a read is pending no longer releases a reader the settled
+  read already cleared (`TypeError` reading `releaseLock`).
