@@ -45,6 +45,15 @@ export const SYNC_STATEMENTS = [
     path    TEXT,
     PRIMARY KEY (k, backend)
   )`,
+  // Which backend produced a path's current state, by the rev its
+  // upstream apply stamped; see sync/origin.ts. A push skips a path
+  // the receiving backend produced and nothing has changed since.
+  `CREATE TABLE IF NOT EXISTS _vfs_upstream_origin (
+    backend TEXT    NOT NULL,
+    path    TEXT    NOT NULL,
+    rev     INTEGER NOT NULL,
+    PRIMARY KEY (backend, path)
+  )`,
   // The `mode` column was added at schema v2; `schema/migrations.ts`
   // owns the ALTER for existing databases. Keep the CHECK
   // constraint here aligned with the migration's CHECK so fresh

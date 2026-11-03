@@ -50,6 +50,7 @@ export { DEFAULT_IGNORE, isIgnored } from "./sync/ignore.js";
 export { assertAppliedPushCursor } from "./sync/invariant.js";
 export type { ManifestChunk } from "./sync/manifests.js";
 export { buildManifest, MANIFEST_VERSION } from "./sync/manifests.js";
+export { forgetUpstreamOrigin, isUpstreamEcho } from "./sync/origin.js";
 export { pushObjects } from "./sync/push.js";
 export type { ChangeCursor, WatermarkKey } from "./sync/watermarks.js";
 export {

@@ -19,7 +19,9 @@ import {
   compareChangeCursors,
   currentRev,
   type Database,
+  forgetUpstreamOrigin,
   hasObjects,
+  isUpstreamEcho,
   readFetchCursor,
   readWatermark,
   type SkippedEntry,
@@ -164,6 +166,9 @@ async function pullOnceImpl(
       if (fetchDiverged) {
         writeFetchCursor(db, { rev: 0, path: null }, backend);
       }
+      // The remote lost state it produced, so the re-baselining push
+      // must ship those paths too.
+      forgetUpstreamOrigin(db, backend);
       return pullOnceImpl(db, remote, backend, true);
     }
     // After the retry path above, this assertion guards a
@@ -297,7 +302,12 @@ export async function pushOnce(db: Database, remote: SyncRPC, backend?: string):
   const entries: ChangeEntry[] = [];
   const wantedHashes: Uint8Array[] = [];
   const seenHash = new Set<string>();
+  let coalesced = 0;
   for await (const e of coalesceChanges(db, { rev: sincePush, path: null })) {
+    coalesced++;
+    // A path this remote produced and nothing changed since: shipping it
+    // back could replace a newer write the remote made after we pulled.
+    if (isUpstreamEcho(db, e, backend)) continue;
     entries.push(e);
     if (e.kind === "file") {
       for (const c of e.chunks) {
@@ -309,7 +319,11 @@ export async function pushOnce(db: Database, remote: SyncRPC, backend?: string):
       }
     }
   }
-  if (entries.length === 0) return 0;
+  if (coalesced === 0) return 0;
+
+  // An echo-only round still pushes, with no entries, so the remote's
+  // applied push cursor keeps pace with pushRev and a remote that later
+  // loses its store is still detected by reconcileWatermarks.
 
   // Probe the remote for the chunks it already holds; ship the
   // complement.
@@ -430,6 +444,9 @@ export async function reconcileWatermarks(
     writeWatermark(db, "pushRev", 0, backend);
     pushRevReset = true;
   }
+  // Either reset means the remote lost state, including paths it
+  // produced; the re-baselining push must ship those too.
+  if (fetchRevReset || pushRevReset) forgetUpstreamOrigin(db, backend);
 
   return { fetchRevReset, pushRevReset };
 }

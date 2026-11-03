@@ -12,6 +12,8 @@ import type { Database } from "../storage.js";
 import { stageBlob } from "./blobs.js";
 import type { ChangeEntry } from "./changes.js";
 import { computeManifestHash } from "./manifests.js";
+import { recordUpstreamOrigin } from "./origin.js";
+import { currentRev } from "./watermarks.js";
 
 // One container-side change that landed under a read-only mount and
 // was therefore skipped rather than applied. Callers (the workspace
@@ -54,13 +56,9 @@ export interface ApplyOptions {
   // Where the entries came from. 'local' (default) treats the apply
   // path like any other mutation: writeFile/mkdir/etc bump
   // vfs_meta.rev and the push loop later ships those new revs
-  // upstream. 'upstream' is informational: the apply still bumps
-  // rev so readers see fresh data, and the next pushOnce ships
-  // those rev bumps back to the sender. Loop convergence is the
-  // receiver's job — the apply path on the original sender uses
-  // alreadyApplied() to drop the redundant entries without bumping
-  // rev further, bounding the echo at one extra round trip per
-  // upstream apply.
+  // upstream. 'upstream' still bumps rev so readers see fresh data,
+  // and records those revs as `backend`'s origin so a push back to
+  // that backend never returns its own, possibly superseded, state.
   source?: "local" | "upstream";
   // Backend id whose watermark row this apply should touch. The
   // DO hosts independent sync cursors per backend; threading the
@@ -264,54 +262,18 @@ export async function applyChanges(
       });
       continue;
     }
-    if (entry.kind === "delete") {
-      try {
-        rm(db, entry.path, { recursive: true, force: true });
-      } catch {
-        // Already gone is fine — idempotent apply.
-      }
-      applied++;
-      pathsInBatch++;
-      if (pathsInBatch >= maxPaths) flush();
-      continue;
-    }
-    if (entry.kind === "dir") {
-      applyDirectoryEntry(db, entry);
-      applied++;
-      pathsInBatch++;
-      if (pathsInBatch >= maxPaths) flush();
-      continue;
-    }
-    if (entry.kind === "symlink") {
-      removeReplaceableFinalEntry(db, entry.path, "symlink");
-      symlink(db, entry.target, entry.path, () => entry.mtime);
-      applied++;
-      pathsInBatch++;
-      if (pathsInBatch >= maxPaths) flush();
-      continue;
-    }
-    const total = applyFileEntry(db, entry, objects);
+    const bytes = applyEntry(db, entry, objects, options);
     applied++;
-    bytesInBatch += total;
+    bytesInBatch += bytes;
     pathsInBatch++;
     if (bytesInBatch >= maxBytes || pathsInBatch >= maxPaths) flush();
   }
 
-  // Loopback suppression used to advance pushRev locally after an
-  // upstream apply so the next push tick wouldn't re-ship the rev
-  // bumps the apply produced. That optimization is unsound: it
-  // moves the *local* pushRev past entries the remote does not
-  // know we have shipped, while the remote's fetchRev (echoed back
-  // as appliedPushRev on every fetchChanges) stays where it was.
-  // The cross-side invariant check in pullOnce then trips on the
-  // very next pull and the post-drain pullOnce in the exec bracket
-  // swallows the error, leaving every subsequent container-side
-  // write invisible to the host until something reconciles.
-  //
-  // The bounded "redundant round-trip" the old comment promised is
-  // still bounded, and the receiver's alreadyApplied() check still
-  // suppresses the entries on the next pushOnce. We just pay one
-  // extra push per upstream apply to keep the two sides in lockstep.
+  // pushRev never advances locally on an upstream apply: that would
+  // move it past entries the remote does not know we shipped and trip
+  // the cross-side invariant on the next pull. The revs this apply
+  // stamped are recorded as the backend's origin instead (see
+  // sync/origin.ts), so the next push to that backend skips them.
   return { applied, skipped };
 }
 
@@ -355,45 +317,44 @@ export function applyChangesSync(
       });
       continue;
     }
-    if (entry.kind === "delete") {
-      try {
-        rm(db, entry.path, { recursive: true, force: true });
-      } catch {
-        // Already gone is fine — idempotent apply.
-      }
-      applied++;
-      pathsInBatch++;
-      if (pathsInBatch >= maxPaths) flush();
-      continue;
-    }
-    if (entry.kind === "dir") {
-      applyDirectoryEntry(db, entry);
-      applied++;
-      pathsInBatch++;
-      if (pathsInBatch >= maxPaths) flush();
-      continue;
-    }
-    if (entry.kind === "symlink") {
-      removeReplaceableFinalEntry(db, entry.path, "symlink");
-      symlink(db, entry.target, entry.path, () => entry.mtime);
-      applied++;
-      pathsInBatch++;
-      if (pathsInBatch >= maxPaths) flush();
-      continue;
-    }
-    const total = applyFileEntry(db, entry, objects);
+    const bytes = applyEntry(db, entry, objects, options);
     applied++;
-    bytesInBatch += total;
+    bytesInBatch += bytes;
     pathsInBatch++;
     if (bytesInBatch >= maxBytes || pathsInBatch >= maxPaths) flush();
   }
 
-  // See applyChanges() for why pushRev no longer advances locally
-  // on upstream applies. The receiver's alreadyApplied() check
-  // suppresses the redundant entries on the next pushOnce; one
-  // extra push per apply keeps the cross-side invariant intact.
-
+  // See applyChanges() for why pushRev never advances locally here.
   return { applied, skipped };
+}
+
+// Apply one entry and return the file bytes it wrote. An upstream apply
+// records its revs as that backend's origin in the same synchronous
+// step, so no concurrent local write can be mistaken for it.
+function applyEntry(
+  db: Database,
+  entry: ChangeEntry,
+  objects: Map<string, Uint8Array>,
+  options: ApplyOptions,
+): number {
+  const before = currentRev(db);
+  let bytes = 0;
+  if (entry.kind === "delete") {
+    try {
+      rm(db, entry.path, { recursive: true, force: true });
+    } catch {
+      // Already gone is fine — idempotent apply.
+    }
+  } else if (entry.kind === "dir") {
+    applyDirectoryEntry(db, entry);
+  } else if (entry.kind === "symlink") {
+    removeReplaceableFinalEntry(db, entry.path, "symlink");
+    symlink(db, entry.target, entry.path, () => entry.mtime);
+  } else {
+    bytes = applyFileEntry(db, entry, objects);
+  }
+  if (options.source === "upstream") recordUpstreamOrigin(db, before, options.backend);
+  return bytes;
 }
 
 // Link a file entry to staged chunks without loading payload bytes.
