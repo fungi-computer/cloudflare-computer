@@ -23,7 +23,7 @@ import type { BackendHandle, WorkspaceBackend } from "../../backend.js";
 import type { WorkspaceServiceProxyProps } from "../../proxy.js";
 import { dynamicWorkerEgress, type WorkspaceEgressPolicy } from "../../runtime/egress.js";
 import { SHELL_RUNTIME_MODULES } from "./runtime-modules.js";
-import { assembleShellModules, type ShellModuleGroup } from "./shell-modules.js";
+import { assembleShellModules, type ShellModuleGroupLoader } from "./shell-modules.js";
 
 // The shape the loaded ShellWorker exposes. The host-side
 // implementation lives in ./entrypoint.ts; the backend consumes
@@ -125,13 +125,13 @@ export interface WorkerShellBackendOptions {
   id?: string;
 
   // Optional shell command groups to include beyond the always-on
-  // core. Import the groups you want from
-  // @cloudflare/computer/shell/<feature> and pass them here; the
-  // backend folds them into the Loader modules table on top of
-  // core. A group you never import is unreachable in your bundle
-  // and the bundler drops it, so this is how you opt a command in
-  // without shipping the rest.
-  commands?: readonly ShellModuleGroup[];
+  // core. Pass a loader that dynamically imports each group you want
+  // from @cloudflare/computer/shell/<feature>; the backend folds
+  // them into the Loader modules table on top of core when it mints
+  // the shell Worker. A group you never load is unreachable in your
+  // bundle and the bundler drops it, so this is how you opt a
+  // command in without shipping the rest.
+  commands?: readonly ShellModuleGroupLoader[];
 }
 
 const DEFAULT_COMPAT_DATE = "2026-06-17";
@@ -232,12 +232,12 @@ export class WorkerShellBackend implements WorkspaceBackend {
       ? [...DEFAULT_COMPAT_FLAGS, ...this.#options.compatibilityFlags]
       : DEFAULT_COMPAT_FLAGS;
 
-    const worker = loader.get(loaderId, () => ({
+    const worker = loader.get(loaderId, async () => ({
       compatibilityDate,
       compatibilityFlags,
       mainModule: "shell.js",
       modules: {
-        ...assembleShellModules(this.#options.commands),
+        ...(await assembleShellModules(this.#options.commands)),
         ...SHELL_RUNTIME_MODULES,
       },
       env: {

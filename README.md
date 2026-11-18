@@ -101,7 +101,6 @@ quickest way to get `exec` working:
 ```ts
 import { withWorkspace, getWorkspace } from "@cloudflare/computer";
 import { WorkerShellBackend } from "@cloudflare/computer/backends/worker-shell";
-import curlModules from "@cloudflare/computer/shell/curl";
 import { DurableObject } from "cloudflare:workers";
 
 export class Agent extends withWorkspace(
@@ -113,7 +112,7 @@ export class Agent extends withWorkspace(
         loader: self.env.LOADER,
         workspace: { binding: "Agent", id: self.ctx.id.toString() },
         ctx: self.ctx,
-        commands: [curlModules],
+        commands: [() => import("@cloudflare/computer/shell/curl").then((m) => m.default)],
       }),
     ],
   }),
@@ -131,10 +130,11 @@ Add the loader binding and the `experimental` flag to `wrangler.jsonc`:
 
 The worker shell ships as feature groups: an always-on core plus
 one optional group per command at
-`@cloudflare/computer/shell/<feature>`. Import the groups you want
-and pass them to `WorkerShellBackend`'s `commands` option; a group you
-never import is unreachable in your bundle and the bundler drops
-it. The optional groups are `curl`, `html-to-markdown`, `python`,
+`@cloudflare/computer/shell/<feature>`. Pass `WorkerShellBackend`'s
+`commands` option a loader that dynamically imports each group you
+want; a group you never load is unreachable in your bundle and the
+bundler drops it, and the ones you load stay off your heap until a
+shell starts. The optional groups are `curl`, `html-to-markdown`, `python`,
 `sqlite`, `js-exec`, `yq`, `file`, `xan`, and `jq`. `curl` runs on
 the isolate's global `fetch` (no `undici` in the bundle); egress
 stays governed by the Dynamic Worker's `globalOutbound`.

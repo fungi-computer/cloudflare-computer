@@ -10,14 +10,13 @@
 //
 //   import { WorkerShellBackend } from "@cloudflare/computer/backends/worker-shell";
 //
-// The package ships the shell as feature groups: SHELL_CORE_MODULES
-// (the always-on core — the pre-built ShellWorker entry plus every
-// dynamic chunk just-bash code-splits into for the base command
-// set) and one optional group per command at
-// @cloudflare/computer/shell/<feature>. A consumer imports the
-// optional groups it wants and passes them to WorkerShellBackend's
-// `commands` option; groups it never imports drop out of its
-// bundle. It also ships SHELL_RUNTIME_MODULES — the module shims
+// The package ships the shell as feature groups: the always-on core
+// (the pre-built ShellWorker entry plus every dynamic chunk
+// just-bash code-splits into for the base command set) and one
+// optional group per command at @cloudflare/computer/shell/<feature>.
+// A consumer passes a loader for each optional group it wants to
+// WorkerShellBackend's `commands` option; groups it never loads drop
+// out of its bundle. It also ships SHELL_RUNTIME_MODULES — the module shims
 // just-bash's static native imports need to load under workerd.
 // The backend assembles core + `commands` and spreads the runtime
 // shims into the Loader callback's `modules` table internally.
@@ -35,8 +34,8 @@ export { defineGitCommand, type GitCommandHost } from "./git-command.js";
 export { SHELL_RUNTIME_MODULES } from "./runtime-modules.js";
 export {
   assembleShellModules,
-  SHELL_CORE_MODULES,
   type ShellModuleGroup,
+  type ShellModuleGroupLoader,
 } from "./shell-modules.js";
 export {
   WorkerShellBackend,
