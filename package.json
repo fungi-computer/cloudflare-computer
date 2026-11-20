@@ -45,6 +45,10 @@
       "types": "./dist/backends/worker-shell/index.d.ts",
       "import": "./dist/backends/worker-shell/index.js"
     },
+    "./backends/worker-shell/backend": {
+      "types": "./dist/backends/worker-shell/worker-shell.d.ts",
+      "import": "./dist/backends/worker-shell/worker-shell.js"
+    },
     "./shell/core": {
       "types": "./dist/backends/worker-shell/shell/core.d.ts",
       "default": "./dist/backends/worker-shell/shell/core.js"

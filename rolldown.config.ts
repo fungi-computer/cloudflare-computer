@@ -34,6 +34,10 @@ export default defineConfig({
     "backends/container/index": "src/backends/container/index.ts",
     "backends/worker-javascript/index": "src/backends/worker-javascript/index.ts",
     "backends/worker-shell/index": "src/backends/worker-shell/index.ts",
+    // The host-side backend alone: a Durable Object that only starts shells
+    // imports this, not the index that also carries the in-shell commands
+    // (and the bundled just-bash they run on) its Worker never executes.
+    "backends/worker-shell/worker-shell": "src/backends/worker-shell/worker-shell.ts",
     // The shell-module groups build-bundle.mjs emits. Each is its
     // own entry so it lands at the dist path the ./shell/* package
     // exports point at; shell-modules.ts imports the core group by
