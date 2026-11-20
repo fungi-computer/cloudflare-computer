@@ -1,5 +1,11 @@
 # @cloudflare/computer
 
+## 0.2.1-fungi.3
+
+### Patch Changes
+
+- Add a backend-only `./backends/worker-shell/backend` entry that starts shells without loading the in-shell commands.
+
 ## 0.2.1-fungi.2
 
 ### Patch Changes
