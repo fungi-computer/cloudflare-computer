@@ -26,6 +26,9 @@
 // "watermark sync failed: <inner>" still classify when the inner
 // error is a transport failure.
 
+/** The connect stages a container backend reports on a transport failure. */
+export type WorkspaceTransportStage = "start" | "egress" | "health" | "restart";
+
 // Tag class for transport failures we throw ourselves. Carrying
 // a class identity lets the classifier match without string
 // inspection, and lets callers wrap an underlying cause for
@@ -33,8 +36,15 @@
 export class WorkspaceTransportError extends Error {
   override readonly name: string = "WorkspaceTransportError";
 
-  constructor(message: string, options?: { cause?: unknown }) {
+  /** The connect stage that failed (start, egress, health, restart), when known. */
+  readonly stage: WorkspaceTransportStage | undefined;
+
+  constructor(
+    message: string,
+    options?: { cause?: unknown; stage?: WorkspaceTransportStage },
+  ) {
     super(message);
+    this.stage = options?.stage;
     if (options?.cause !== undefined) {
       (this as Error & { cause?: unknown }).cause = options.cause;
     }

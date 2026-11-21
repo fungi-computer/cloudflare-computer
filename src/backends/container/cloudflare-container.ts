@@ -222,7 +222,7 @@ export class CloudflareContainerBackend implements WorkspaceBackend {
           lastError: error,
           priorExit,
         }),
-        { cause: error },
+        { cause: error, stage: "start" },
       );
     }
     try {
@@ -239,7 +239,7 @@ export class CloudflareContainerBackend implements WorkspaceBackend {
           lastError: error,
           priorExit,
         }),
-        { cause: error },
+        { cause: error, stage: "egress" },
       );
     }
 
@@ -446,7 +446,7 @@ export class CloudflareContainerBackend implements WorkspaceBackend {
               restarts,
               lastError: error,
             }),
-            { cause: error },
+            { cause: error, stage: "restart" },
           );
         }
       }
@@ -462,7 +462,7 @@ export class CloudflareContainerBackend implements WorkspaceBackend {
         lastError,
         priorExit,
       }),
-      lastError instanceof Error ? { cause: lastError } : undefined,
+      lastError instanceof Error ? { cause: lastError, stage: "health" } : { stage: "health" },
     );
   }
 
